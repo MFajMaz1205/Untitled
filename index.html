@@ -2,10 +2,9 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MESH // UNIFIED WORKSPACE</title>
     
-    <!-- Préchargement des ressources pour gagner en vitesse -->
     <script src="https://cdn.jsdelivr.net/npm/gun/gun.js" defer></script>
     <script src="https://unpkg.com/lucide@latest" defer></script>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js" defer></script>
@@ -14,73 +13,41 @@
 </head>
 <body>
 
-    <header role="banner">
+    <header>
         <div class="header-actions">
-            <button class="btn-reset-global" onclick="resetNetworkFeed()" aria-label="Réinitialiser le flux">
-                <i data-lucide="trash-2"></i>
-            </button>
-            <button id="adminBtn" class="btn-header" onclick="verifyAdminStatus()">
-                <i data-lucide="shield"></i> <span id="adminBtnText">Admin</span>
-            </button>
-            <input type="text" id="usernameInput" value="Anonyme" maxlength="12" aria-label="Nom d'utilisateur">
+            <button class="btn-reset-global" onclick="resetNetworkFeed()"><i data-lucide="trash-2"></i></button>
+            <input type="text" id="usernameInput" value="Anonyme" maxlength="12">
         </div>
     </header>
 
-    <main class="main-container">
-        <!-- Section Feed -->
-        <section class="feed-container" id="mainFeed">
+    <div class="main-container">
+        <!-- Feed -->
+        <div class="feed-container">
             <div class="posts-list" id="globalFeed"></div>
-            
-            <footer class="composer">
-                <div class="message-bar">
-                    <button class="bar-btn" onclick="openIDE()" aria-label="Ouvrir l'IDE"><i data-lucide="code"></i></button>
-                    <label class="bar-btn" aria-label="Ajouter une image">
-                        <i data-lucide="image"></i>
-                        <input type="file" id="postImgFile" accept="image/*" hidden onchange="handleImgUpload(this)">
-                    </label>
-                    <input type="text" id="postText" class="message-input" placeholder="Écrire un message..." autocomplete="off">
-                    <button class="bar-btn btn-send" onclick="publishNewPost()" aria-label="Envoyer"><i data-lucide="arrow-right"></i></button>
-                </div>
-                <div class="status-indicators" id="statusBox"></div>
-            </footer>
-        </section>
-
-        <!-- Section Thread (Panneau latéral) -->
-        <aside class="thread-panel" id="threadPanel" aria-hidden="true">
-            <div class="panel-header">
-                <span><i data-lucide="message-square"></i> RÉPONSES</span>
-                <button onclick="closeThread()" aria-label="Fermer"><i data-lucide="x"></i></button>
-            </div>
-            <div class="posts-list" id="threadFeed"></div>
             <div class="composer">
-                <input type="text" id="replyText" class="message-input" placeholder="Répondre...">
-                <button class="bar-btn btn-send" onclick="publishNewReply()"><i data-lucide="arrow-right"></i></button>
+                <div class="message-bar">
+                    <button class="bar-btn" onclick="openIDE()"><i data-lucide="code"></i></button>
+                    <input type="text" id="postText" class="message-input" placeholder="Écrire un message...">
+                    <button class="bar-btn btn-send" onclick="publishNewPost()"><i data-lucide="arrow-right"></i></button>
+                </div>
             </div>
-        </aside>
+        </div>
 
-        <!-- Section IDE (Overlay) -->
-        <section class="ide-panel" id="idePanel" aria-hidden="true">
+        <!-- IDE -->
+        <div class="ide-panel" id="idePanel" style="display:none;">
             <div class="panel-header">
-                <select id="ideLang" onchange="adaptTemplateLanguage()">
-                    <option value="javascript">JavaScript</option>
-                    <option value="python">Python</option>
-                </select>
-                <button onclick="closeIDE()" aria-label="Fermer IDE"><i data-lucide="x"></i></button>
+                <select id="ideLang"><option value="javascript">JS</option><option value="python">Python</option></select>
+                <button onclick="closeIDE()"><i data-lucide="x"></i></button>
             </div>
-            <textarea id="ideSource" spellcheck="false" placeholder="Écrivez votre code ici..."></textarea>
-            <div class="ide-actions">
-                <button class="ide-btn" onclick="executeCompiler()"><i data-lucide="play"></i> Exécuter</button>
-            </div>
-            <div class="ide-console" id="consoleOutput">> Prêt...</div>
-        </section>
-    </main>
+            <textarea id="ideSource"></textarea>
+            <button class="ide-btn" onclick="executeCompiler()">Exécuter</button>
+            <div id="consoleOutput"></div>
+        </div>
+    </div>
 
     <script src="js/app.js"></script>
     <script>
-        // Initialisation sécurisée des icônes
-        window.onload = () => {
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        };
+        window.onload = () => { if(typeof lucide !== 'undefined') lucide.createIcons(); };
     </script>
 </body>
 </html>
