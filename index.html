@@ -2,52 +2,569 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MESH // UNIFIED WORKSPACE</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js" defer></script>
-    <script src="https://unpkg.com/lucide@latest" defer></script>
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js" defer></script>
-    
-    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+    <style>
+        :root {
+            --bg: #06070d;
+            --surface: rgba(20, 22, 37, 0.6);
+            --border: rgba(255, 255, 255, 0.08);
+            --text-main: #f1f3f9;
+            --text-muted: #767c98;
+            --accent: #86e1fc;
+            --accent-gradient: linear-gradient(135deg, #86e1fc, #4f46e5);
+            --code-bg: #090a10;
+            --danger: #ff5a79;
+            --admin-color: #10b981;
+        }
+
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body { 
+            background-color: var(--bg); 
+            color: var(--text-main); 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            overflow: hidden;
+            background-image: radial-gradient(circle at 50% -20%, rgba(79, 70, 229, 0.15), transparent 50%);
+        }
+
+        header { 
+            background: rgba(6, 7, 13, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border); 
+            padding: 10px 16px; 
+            display: flex; 
+            justify-content: flex-end; 
+            align-items: center; 
+            z-index: 10; 
+            height: 54px;
+            flex-shrink: 0;
+        }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .user-config input { 
+            background: rgba(255, 255, 255, 0.05); 
+            border: 1px solid var(--border); 
+            color: #fff; 
+            padding: 6px 14px; 
+            border-radius: 20px; 
+            font-size: 14px; 
+            width: 140px; 
+            outline: none;
+            text-align: center;
+        }
+        
+        .btn-header {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .btn-header:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+        }
+        .btn-header.is-admin {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: var(--admin-color);
+            color: #a6e3a1;
+        }
+        
+        /* Bouton Reset Global Admin */
+        .btn-reset-global {
+            background: rgba(255, 90, 121, 0.1);
+            border: 1px solid rgba(255, 90, 121, 0.2);
+            color: var(--danger);
+            display: none; /* Caché par défaut */
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .btn-reset-global:hover {
+            background: var(--danger);
+            color: #fff;
+        }
+        body.admin-mode .btn-reset-global {
+            display: flex; /* Visible uniquement pour l'admin */
+        }
+
+        .main-container { 
+            flex: 1; 
+            display: flex; 
+            width: 100%; 
+            height: calc(100vh - 54px); 
+            overflow: hidden; 
+            position: relative; 
+        }
+        
+        .feed-container { 
+            flex: 1; 
+            display: grid;
+            grid-template-rows: 1fr auto; 
+            height: 100%; 
+            min-width: 320px;
+            background: transparent;
+        }
+
+        .posts-list { 
+            overflow-y: auto; 
+            padding: 16px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+        }
+
+        .post-card { 
+            background: var(--surface); 
+            backdrop-filter: blur(8px); 
+            border: 1px solid var(--border); 
+            border-radius: 14px; 
+            padding: 14px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px; 
+            cursor: pointer; 
+            position: relative;
+        }
+        .post-meta { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-muted); padding-right: 24px; }
+        .post-author { color: var(--text-main); font-weight: 600; }
+        .post-text { font-size: 14px; line-height: 1.5; color: #e2e8f0; word-break: break-word; }
+        
+        .btn-delete-post {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: none;
+            padding: 4px;
+            border-radius: 6px;
+            z-index: 5;
+        }
+        .btn-delete-post:hover { color: var(--danger); }
+        body.admin-mode .btn-delete-post { display: block; }
+        
+        .post-image { max-width: 100%; max-height: 400px; border-radius: 10px; object-fit: contain; background: rgba(0, 0, 0, 0.25); margin: 12px 0; padding: 8px; }
+        .post-code-block { background: var(--code-bg); border: 1px solid var(--border); padding: 12px; font-family: monospace; font-size: 12px; overflow-x: auto; color: #a6e3a1; border-radius: 8px; position: relative; }
+        .post-code-badge { position: absolute; top: 4px; right: 6px; font-size: 9px; color: var(--accent); background: rgba(0,0,0,0.6); padding: 1px 5px; border-radius: 4px; text-transform: uppercase; }
+        .post-actions { display: flex; gap: 20px; align-items: center; margin-top: 2px; border-top: 1px solid var(--border); padding-top: 10px; }
+        .action-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 12px; }
+
+        .composer { padding: 12px 14px; background: #06070d; border-top: 1px solid var(--border); width: 100%; }
+        .message-bar { background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); border-radius: 22px; display: flex; align-items: center; padding: 4px 8px; gap: 6px; }
+        .bar-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; width: 38px; height: 38px; border-radius: 50%; display: flex; justify-content: center; align-items: center; }
+        .btn-send { background: var(--accent-gradient); color: #fff; width: 34px; height: 34px; }
+        .message-input { flex: 1; background: none; border: none; color: #fff; font-size: 14px; outline: none; padding-left: 4px; height: 36px; }
+        .status-indicators { display: flex; gap: 10px; padding-left: 12px; margin-top: 4px; font-size: 11px; color: var(--accent); min-height: 14px; }
+
+        .thread-panel, .ide-panel { width: 400px; height: 100%; background: #08090f; border-left: 1px solid var(--border); display: none; flex-direction: column; z-index: 5; overflow: hidden; }
+        .ide-panel { width: 550px; border-left: 2px solid rgba(134, 225, 252, 0.2); }
+        .thread-panel.open, .ide-panel.open { display: flex; }
+        
+        .panel-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; background: rgba(20,22,37,0.3); height: 54px; flex-shrink: 0; }
+        .ide-selector { background: #11131e; border: 1px solid var(--border); color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 13px; outline: none; cursor: pointer; }
+        .ide-editor-container { flex: 1; display: flex; border-bottom: 1px solid var(--border); overflow: hidden; }
+        .ide-line-numbers { width: 32px; padding: 12px 0; text-align: center; color: rgba(255,255,255,0.1); font-family: monospace; font-size: 12px; background: #05060a; line-height: 20px; user-select: none; }
+        .ide-textarea { flex: 1; background: transparent; border: none; color: #a6e3a1; font-family: monospace; font-size: 14px; padding: 12px; resize: none; outline: none; line-height: 20px; white-space: pre; overflow: auto; }
+        .ide-actions { padding: 12px 14px; background: #0d0f18; display: flex; justify-content: space-between; gap: 8px; flex-shrink: 0; }
+        .ide-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: #fff; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 4px; flex: 1; justify-content: center; }
+        .ide-btn.run { background: #10b981; border: none; font-weight: 600; }
+        .ide-console { height: 160px; background: #040508; border-top: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+        .ide-console-header { font-size: 11px; color: var(--text-muted); padding: 6px 12px; background: #090a0f; display: flex; justify-content: space-between; }
+        .ide-output-wrapper { flex: 1; position: relative; overflow: auto; }
+        .ide-console-output { padding: 8px 12px; font-family: monospace; font-size: 12px; color: #38bdf8; white-space: pre-wrap; }
+        .ide-html-preview { width: 100%; height: 100%; border: none; background: #fff; display: none; }
+
+        @media (max-width: 850px) {
+            .thread-panel, .ide-panel { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 100; }
+        }
+    </style>
 </head>
 <body>
 
     <header>
         <div class="header-actions">
-            <button class="btn-reset-global" onclick="resetNetworkFeed()"><i data-lucide="trash-2"></i></button>
-            <input type="text" id="usernameInput" value="Anonyme" maxlength="12">
+            <button class="btn-reset-global" onclick="resetNetworkFeed()">
+                <i data-lucide="trash-2"></i> <span>Reset Global</span>
+            </button>
+            <button id="adminBtn" class="btn-header" onclick="verifyAdminStatus()">
+                <i data-lucide="shield"></i> <span id="adminBtnText">Vérifier Statut Admin</span>
+            </button>
+            <div class="user-config">
+                <input type="text" id="usernameInput" value="Anonyme" maxlength="12">
+            </div>
         </div>
     </header>
 
     <div class="main-container">
-        <!-- Feed -->
         <div class="feed-container">
             <div class="posts-list" id="globalFeed"></div>
             <div class="composer">
                 <div class="message-bar">
-                    <button class="bar-btn" onclick="openIDE()"><i data-lucide="code"></i></button>
-                    <input type="text" id="postText" class="message-input" placeholder="Écrire un message...">
+                    <button class="bar-btn" onclick="openIDE()" title="Ouvrir l'IDE"><i data-lucide="code"></i></button>
+                    <label class="bar-btn" title="Ajouter une photo">
+                        <i data-lucide="image"></i>
+                        <input type="file" id="postImgFile" accept="image/*" style="display:none;" onchange="handleImgUpload(this)">
+                    </label>
+                    <input type="text" id="postText" class="message-input" placeholder="Écrire un message..." autocomplete="off">
                     <button class="bar-btn btn-send" onclick="publishNewPost()"><i data-lucide="arrow-right"></i></button>
+                </div>
+                <div class="status-indicators" id="statusBox"></div>
+            </div>
+        </div>
+
+        <div class="thread-panel" id="threadPanel">
+            <div class="panel-header">
+                <span style="display:flex; align-items:center; gap:6px;"><i data-lucide="message-square" size="14"></i> RÉPONSES</span>
+                <button onclick="closeThread()" style="background:none; border:none; color:var(--text-muted); cursor:pointer;"><i data-lucide="x"></i></button>
+            </div>
+            <div class="posts-list" id="threadFeed" style="flex:1; overflow-y:auto;"></div>
+            <div class="composer">
+                <div class="message-bar">
+                    <input type="text" id="replyText" class="message-input" placeholder="Répondre au thread..." autocomplete="off">
+                    <button class="bar-btn btn-send" onclick="publishNewReply()"><i data-lucide="arrow-right"></i></button>
                 </div>
             </div>
         </div>
 
-        <!-- IDE -->
-        <div class="ide-panel" id="idePanel" style="display:none;">
-            <div class="panel-header">
-                <select id="ideLang"><option value="javascript">JS</option><option value="python">Python</option></select>
-                <button onclick="closeIDE()"><i data-lucide="x"></i></button>
+        <div class="ide-panel" id="idePanel">
+            <div class="panel-header" style="background:#0c0d14; border:none;">
+                <select id="ideLang" class="ide-selector" onchange="adaptTemplateLanguage()">
+                    <option value="javascript">JavaScript (JS)</option>
+                    <option value="python">Python 3</option>
+                    <option value="html">HTML / CSS</option>
+                </select>
+                <button onclick="closeIDE()" style="background:none; border:none; color:var(--text-muted); cursor:pointer;"><i data-lucide="x"></i></button>
             </div>
-            <textarea id="ideSource"></textarea>
-            <button class="ide-btn" onclick="executeCompiler()">Exécuter</button>
-            <div id="consoleOutput"></div>
+            <div class="ide-editor-container">
+                <div class="ide-line-numbers">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12</div>
+                <textarea id="ideSource" class="ide-textarea" spellcheck="false"></textarea>
+            </div>
+            <div class="ide-actions">
+                <button class="ide-btn" onclick="injectIdeCodeIntoBar()">
+                    <i data-lucide="file-input" size="14"></i> Injecter le code
+                </button>
+                <button class="ide-btn run" onclick="executeCompiler()">
+                    <i data-lucide="play" size="14"></i> Exécuter
+                </button>
+            </div>
+            <div class="ide-console">
+                <div class="ide-console-header"><span id="consoleTitle">CONSOLE</span> <span id="pyLoading" style="color:var(--accent); display:none;">⌛ Lancement Engine Python...</span></div>
+                <div class="ide-output-wrapper">
+                    <div class="ide-console-output" id="consoleOutput">> Prêt...</div>
+                    <iframe class="ide-html-preview" id="htmlPreview"></iframe>
+                </div>
+            </div>
         </div>
     </div>
 
-    <script src="js/app.js"></script>
-    <script>
-        window.onload = () => { if(typeof lucide !== 'undefined') lucide.createIcons(); };
-    </script>
+<script>
+    const gun = Gun(['https://gun-manhattan.herokuapp.com/gun', 'https://gundb-relay.onrender.com/gun']);
+    const postsNode = gun.get('mesh-posts-verif-v5');
+    const blacklistNode = gun.get('mesh-blacklist-verif-v5');
+    const systemControlNode = gun.get('mesh-system-control-v5'); // Noeud de commande global
+
+    // =========================================================================
+    // 🔒 CONFIGURATION CRITIQUE : UN SEUL ADMIN POSSIBLE
+    // Colles ici la clé publique obtenue via le script de l'étape précédente.
+    // =========================================================================
+    const MAIN_ADMIN_PUBLIC_KEY = "METS_TA_CLE_PUBLIQUE_ICI"; 
+    // =========================================================================
+
+    let isAdminActive = false;
+    let blacklistedIds = {};
+    let currentResetTimestamp = 0; // Timestamp barrière pour masquer les vieux messages
+
+    const mySeed = 'u_' + Math.random().toString(36).substr(2, 4);
+    let activeThreadId = null;
+    let base64ImageCache = "";
+    let codeSnippetCache = "";
+    let codeLanguageCache = "javascript";
+    let pyodideInstance = null; 
+    let localPostsCache = {};
+
+    try { localPostsCache = JSON.parse(localStorage.getItem('mesh_posts_backup')) || {}; } catch(e) {}
+
+    const templates = {
+        javascript: `// Script JS\nlet message = "Hello World !";\nconsole.log(message);`,
+        python: `# Script Python\nfor i in range(3):\n    print(f"Ligne : {i}")`,
+        html: `\n<div style="padding:15px; text-align:center; color:#4f46e5;">\n  <h3>Rendu OK</h3>\n</div>`
+    };
+    document.getElementById('ideSource').value = templates.javascript;
+
+    if(localStorage.getItem('p2p-username-modern')) document.getElementById('usernameInput').value = localStorage.getItem('p2p-username-modern');
+    document.getElementById('usernameInput').addEventListener('input', (e) => localStorage.setItem('p2p-username-modern', e.target.value.trim()));
+
+    async function verifyAdminStatus() {
+        const privateKeyRaw = localStorage.getItem('mesh_secret_admin_key');
+        if (!privateKeyRaw) {
+            alert("❌ Accès refusé. Ce navigateur ne détient pas la clé d'autorité.");
+            return;
+        }
+        isAdminActive = true;
+        document.body.classList.add('admin-mode');
+        document.getElementById('adminBtn').classList.add('is-admin');
+        document.getElementById('adminBtnText').innerText = "Mode Admin Confirmé";
+    }
+
+    // 💥 NOUVELLE FONCTION : RESET GLOBAL RESEAU
+    async function resetNetworkFeed() {
+        if(!isAdminActive) return;
+        if(confirm("⚠️ ATTENTION ! Effacer TOUS les messages du fil de discussion pour TOUT LE MONDE ?")) {
+            const resetTime = Date.now();
+            // On diffuse l'heure du reset sur le réseau
+            systemControlNode.put({
+                action: "global_reset",
+                timestamp: resetTime
+            });
+        }
+    }
+
+    // ÉCOUTEUR DU RESET RESEAU (Tout le monde obéit)
+    systemControlNode.on((data) => {
+        if(data && data.action === "global_reset" && data.timestamp > currentResetTimestamp) {
+            currentResetTimestamp = data.timestamp;
+            
+            // 1. Vide instantanément l'affichage
+            document.getElementById('globalFeed').innerHTML = '';
+            closeThread();
+            
+            // 2. Nettoie le stockage local historique
+            localPostsCache = {};
+            localStorage.setItem('mesh_posts_backup', JSON.stringify(localPostsCache));
+            console.log("🧹 Le fil de discussion a été réinitialisé par l'administrateur.");
+        }
+    });
+
+    async function deletePostNetwork(postId, event) {
+        if(event) event.stopPropagation();
+        if(!isAdminActive) return;
+
+        if(confirm("Bannir définitivement ce message ?")) {
+            blacklistNode.get(postId).put({
+                action: "delete",
+                target: postId,
+                authorityProof: true
+            });
+        }
+    }
+
+    blacklistNode.map().on((data, id) => {
+        if (data && data.action === "delete" && data.target === id) {
+            blacklistedIds[id] = true;
+            const el = document.getElementById(id);
+            if(el) el.remove();
+            
+            if(localPostsCache[id]) {
+                delete localPostsCache[id];
+                localStorage.setItem('mesh_posts_backup', JSON.stringify(localPostsCache));
+            }
+        }
+    });
+
+    function openIDE(preloadedCode = "", lang = "javascript") {
+        document.getElementById('idePanel').classList.add('open');
+        document.getElementById('ideLang').value = lang;
+        if (preloadedCode) document.getElementById('ideSource').value = preloadedCode;
+        else adaptTemplateLanguage();
+        toggleOutputs();
+    }
+    function closeIDE() { document.getElementById('idePanel').classList.remove('open'); }
+    function adaptTemplateLanguage() {
+        const lang = document.getElementById('ideLang').value;
+        document.getElementById('ideSource').value = templates[lang];
+        toggleOutputs();
+    }
+
+    function toggleOutputs() {
+        const lang = document.getElementById('ideLang').value;
+        const consoleOut = document.getElementById('consoleOutput');
+        const htmlPreview = document.getElementById('htmlPreview');
+        if(lang === "html") {
+            consoleOut.style.display = "none"; htmlPreview.style.display = "block";
+            document.getElementById('consoleTitle').innerText = "LIVE VIEW";
+        } else {
+            consoleOut.style.display = "block"; htmlPreview.style.display = "none";
+            document.getElementById('consoleTitle').innerText = "CONSOLE";
+        }
+    }
+
+    async function executeCompiler() {
+        const lang = document.getElementById('ideLang').value;
+        const code = document.getElementById('ideSource').value;
+        const consoleOut = document.getElementById('consoleOutput');
+        const htmlPreview = document.getElementById('htmlPreview');
+        consoleOut.style.color = "#38bdf8"; consoleOut.innerText = "";
+
+        if (lang === "javascript") {
+            const originalLog = console.log;
+            console.log = function(...args) { consoleOut.innerText += args.join(' ') + '\n'; };
+            try {
+                new Function(code)();
+                if(!consoleOut.innerText) consoleOut.innerText = "> Exécuté.";
+            } catch (err) { consoleOut.style.color = "#ff5a79"; consoleOut.innerText = `❌ ${err.message}`; }
+            console.log = originalLog;
+        } else if (lang === "html") {
+            const dst = htmlPreview.contentDocument || htmlPreview.contentWindow.document;
+            dst.open(); dst.write(code); dst.close();
+        } else if (lang === "python") {
+            document.getElementById('pyLoading').style.display = "inline";
+            try {
+                if (!pyodideInstance) pyodideInstance = await loadPyodide();
+                pyodideInstance.runPython(`import sys\nimport io\nsys.stdout = io.StringIO()`);
+                await pyodideInstance.runPythonAsync(code);
+                consoleOut.innerText = pyodideInstance.runPython("sys.stdout.getvalue()") || "> Exécuté.";
+            } catch (err) { consoleOut.style.color = "#ff5a79"; consoleOut.innerText = `❌ ${err.message}`; }
+            document.getElementById('pyLoading').style.display = "none";
+        }
+    }
+
+    function injectIdeCodeIntoBar() {
+        const code = document.getElementById('ideSource').value.trim();
+        if(code) {
+            codeSnippetCache = code; codeLanguageCache = document.getElementById('ideLang').value;
+            updateIndicators(); closeIDE();
+        }
+    }
+
+    function handleImgUpload(input) {
+        const file = input.files[0];
+        if (!file) return;
+        if (file.size > 5000000) { alert("Limite maximale 5 Mo."); return; }
+        const reader = new FileReader();
+        reader.onload = function(e) { base64ImageCache = e.target.result; updateIndicators(); };
+        reader.readAsDataURL(file);
+    }
+
+    function updateIndicators() {
+        let text = "";
+        if (base64ImageCache) text += "📸 Img ";
+        if (codeSnippetCache) text += `💻 Code (${codeLanguageCache.toUpperCase()}) `;
+        document.getElementById('statusBox').innerText = text;
+    }
+
+    function publishNewPost() {
+        const inputEl = document.getElementById('postText');
+        const text = inputEl.value.trim();
+        const author = document.getElementById('usernameInput').value.trim() || "Anonyme";
+        if (!text && !base64ImageCache && !codeSnippetCache) return;
+        
+        const postId = 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+        postsNode.get(postId).put({
+            id: postId, author: author, text: text,
+            image: base64ImageCache || "", code: codeSnippetCache || "", lang: codeLanguageCache,
+            timestamp: Date.now(), uid: mySeed
+        });
+        inputEl.value = ""; base64ImageCache = ""; codeSnippetCache = ""; document.getElementById('statusBox').innerText = "";
+    }
+
+    function publishNewReply() {
+        if (!activeThreadId) return;
+        const inputEl = document.getElementById('replyText');
+        const text = inputEl.value.trim();
+        const author = document.getElementById('usernameInput').value.trim() || "Anonyme";
+        if (!text) return;
+        
+        const replyId = 'r_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+        repliesNode.get(activeThreadId).get(replyId).put({
+            id: replyId, author: author, text: text, timestamp: Date.now()
+        });
+        inputEl.value = "";
+    }
+
+    function generateCardHTML(data, isReply = false) {
+        let imgTag = data.image ? `<img class="post-image" src="${escapeHTML(data.image)}">` : '';
+        let codeTag = data.code ? `<pre class="post-code-block" onclick="openIDE(\`${escapeHTML(data.code)}\`, '${escapeHTML(data.lang || 'javascript')}'); event.stopPropagation();"><span class="post-code-badge">${escapeHTML(data.lang || 'js')}</span><code>${escapeHTML(data.code)}</code></pre>` : '';
+        let footer = isReply ? '' : `<div class="post-actions"><div class="action-btn"><i data-lucide="message-circle" size="14"></i> Réponses</div></div>`;
+        let deleteBtn = isReply ? '' : `<button class="btn-delete-post" onclick="deletePostNetwork('${data.id}', event)"><i data-lucide="trash-2" size="14"></i></button>`;
+
+        return `
+            <div class="post-card" id="${data.id}" ${!isReply ? `onclick="openThread('${data.id}')"` : ''}>
+                ${deleteBtn}
+                <div class="post-meta">
+                    <span class="post-author">${escapeHTML(data.author)} <span>#${data.uid || 'anon'}</span></span>
+                    <span>${new Date(data.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                </div>
+                ${data.text ? `<div class="post-text">${escapeHTML(data.text)}</div>` : ''}
+                ${imgTag} ${codeTag} ${footer}
+            </div>
+        `;
+    }
+
+    postsNode.map().on((post, id) => {
+        if (!post || !id || blacklistedIds[id] || blacklistedIds[post.id]) return;
+        
+        // SÉCURITÉ RESET : Si le message est plus vieux que le dernier Reset Global, on l'ignore
+        const msgTime = post.timestamp || Date.now();
+        if (msgTime < currentResetTimestamp) return;
+
+        const cleanPost = {
+            id: post.id || id, author: post.author, text: post.text, image: post.image,
+            code: post.code, lang: post.lang, timestamp: msgTime, uid: post.uid
+        };
+        localPostsCache[id] = cleanPost;
+        try { localStorage.setItem('mesh_posts_backup', JSON.stringify(localPostsCache)); } catch(e) {}
+        
+        if (document.getElementById(id)) return;
+        const feed = document.getElementById('globalFeed');
+        const container = document.createElement('div'); container.innerHTML = generateCardHTML(cleanPost, false);
+        if (feed.firstChild) feed.insertBefore(container.firstElementChild, feed.firstChild);
+        else feed.appendChild(container.firstElementChild);
+        lucide.createIcons();
+    });
+
+    function openThread(postId) {
+        activeThreadId = postId;
+        const threadFeed = document.getElementById('threadFeed'); threadFeed.innerHTML = '';
+        document.getElementById('threadPanel').classList.add('open');
+        postsNode.get(postId).once((parentPost) => {
+            if (!parentPost || blacklistedIds[postId] || parentPost.timestamp < currentResetTimestamp) return;
+            const container = document.createElement('div'); container.innerHTML = generateCardHTML(parentPost, true);
+            threadFeed.appendChild(container.firstElementChild);
+            
+            repliesNode.get(postId).map().on((reply, rId) => {
+                if (!reply || document.getElementById(rId) || blacklistedIds[rId] || reply.timestamp < currentResetTimestamp) return;
+                const rContainer = document.createElement('div'); rContainer.innerHTML = generateCardHTML(reply, true);
+                threadFeed.appendChild(rContainer.firstElementChild);
+                lucide.createIcons();
+            });
+        });
+    }
+
+    function closeThread() { document.getElementById('threadPanel').classList.remove('open'); activeThreadId = null; }
+    document.getElementById('postText').onkeydown = function(e) { if (e.key === 'Enter') { e.preventDefault(); publishNewPost(); } };
+    document.getElementById('replyText').onkeydown = function(e) { if (e.key === 'Enter') { e.preventDefault(); publishNewReply(); } };
+    function escapeHTML(str) { return str.replace(/[&<>'"]/g, t => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[t] || t)); }
+
+    if(localStorage.getItem('mesh_secret_admin_key')) verifyAdminStatus();
+    lucide.createIcons();
+</script>
 </body>
 </html>
