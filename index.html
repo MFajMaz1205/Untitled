@@ -5,102 +5,82 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MESH // UNIFIED WORKSPACE</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+    <!-- Préchargement des ressources pour gagner en vitesse -->
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js" defer></script>
+    <script src="https://unpkg.com/lucide@latest" defer></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js" defer></script>
     
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-    <header>
+    <header role="banner">
         <div class="header-actions">
-            <button class="btn-reset-global" onclick="resetNetworkFeed()">
-                <i data-lucide="trash-2"></i> <span>Reset Global</span>
+            <button class="btn-reset-global" onclick="resetNetworkFeed()" aria-label="Réinitialiser le flux">
+                <i data-lucide="trash-2"></i>
             </button>
-            
             <button id="adminBtn" class="btn-header" onclick="verifyAdminStatus()">
-                <i data-lucide="shield"></i> <span id="adminBtnText">Vérifier Statut Admin</span>
+                <i data-lucide="shield"></i> <span id="adminBtnText">Admin</span>
             </button>
-            
-            <div class="user-config">
-                <input type="text" id="usernameInput" value="Anonyme" maxlength="12">
-            </div>
+            <input type="text" id="usernameInput" value="Anonyme" maxlength="12" aria-label="Nom d'utilisateur">
         </div>
     </header>
 
-    <div class="main-container">
-        <div class="feed-container">
+    <main class="main-container">
+        <!-- Section Feed -->
+        <section class="feed-container" id="mainFeed">
             <div class="posts-list" id="globalFeed"></div>
             
-            <div class="composer">
+            <footer class="composer">
                 <div class="message-bar">
-                    <button class="bar-btn" onclick="openIDE()" title="Ouvrir l'IDE"><i data-lucide="code"></i></button>
-                    <label class="bar-btn" title="Ajouter une photo">
+                    <button class="bar-btn" onclick="openIDE()" aria-label="Ouvrir l'IDE"><i data-lucide="code"></i></button>
+                    <label class="bar-btn" aria-label="Ajouter une image">
                         <i data-lucide="image"></i>
-                        <input type="file" id="postImgFile" accept="image/*" style="display:none;" onchange="handleImgUpload(this)">
+                        <input type="file" id="postImgFile" accept="image/*" hidden onchange="handleImgUpload(this)">
                     </label>
                     <input type="text" id="postText" class="message-input" placeholder="Écrire un message..." autocomplete="off">
-                    <button class="bar-btn btn-send" onclick="publishNewPost()"><i data-lucide="arrow-right"></i></button>
+                    <button class="bar-btn btn-send" onclick="publishNewPost()" aria-label="Envoyer"><i data-lucide="arrow-right"></i></button>
                 </div>
                 <div class="status-indicators" id="statusBox"></div>
-            </div>
-        </div>
+            </footer>
+        </section>
 
-        <div class="thread-panel" id="threadPanel">
+        <!-- Section Thread (Panneau latéral) -->
+        <aside class="thread-panel" id="threadPanel" aria-hidden="true">
             <div class="panel-header">
-                <span style="display:flex; align-items:center; gap:6px;"><i data-lucide="message-square" size="14"></i> RÉPONSES</span>
-                <button onclick="closeThread()" style="background:none; border:none; color:var(--text-muted); cursor:pointer;"><i data-lucide="x"></i></button>
+                <span><i data-lucide="message-square"></i> RÉPONSES</span>
+                <button onclick="closeThread()" aria-label="Fermer"><i data-lucide="x"></i></button>
             </div>
-            <div class="posts-list" id="threadFeed" style="flex:1; overflow-y:auto;"></div>
+            <div class="posts-list" id="threadFeed"></div>
             <div class="composer">
-                <div class="message-bar">
-                    <input type="text" id="replyText" class="message-input" placeholder="Répondre au thread..." autocomplete="off">
-                    <button class="bar-btn btn-send" onclick="publishNewReply()"><i data-lucide="arrow-right"></i></button>
-                </div>
+                <input type="text" id="replyText" class="message-input" placeholder="Répondre...">
+                <button class="bar-btn btn-send" onclick="publishNewReply()"><i data-lucide="arrow-right"></i></button>
             </div>
-        </div>
+        </aside>
 
-        <div class="ide-panel" id="idePanel">
-            <div class="panel-header" style="background:#0c0d14; border:none;">
-                <select id="ideLang" class="ide-selector" onchange="adaptTemplateLanguage()">
-                    <option value="javascript">JavaScript (JS)</option>
-                    <option value="python">Python 3</option>
-                    <option value="html">HTML / CSS</option>
+        <!-- Section IDE (Overlay) -->
+        <section class="ide-panel" id="idePanel" aria-hidden="true">
+            <div class="panel-header">
+                <select id="ideLang" onchange="adaptTemplateLanguage()">
+                    <option value="javascript">JavaScript</option>
+                    <option value="python">Python</option>
                 </select>
-                <button onclick="closeIDE()" style="background:none; border:none; color:var(--text-muted); cursor:pointer;"><i data-lucide="x"></i></button>
+                <button onclick="closeIDE()" aria-label="Fermer IDE"><i data-lucide="x"></i></button>
             </div>
-            <div class="ide-editor-container">
-                <div class="ide-line-numbers" id="lineNumbers">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12</div>
-                <textarea id="ideSource" class="ide-textarea" spellcheck="false"></textarea>
-            </div>
+            <textarea id="ideSource" spellcheck="false" placeholder="Écrivez votre code ici..."></textarea>
             <div class="ide-actions">
-                <button class="ide-btn" onclick="injectIdeCodeIntoBar()">
-                    <i data-lucide="file-input" size="14"></i> Injecter le code
-                </button>
-                <button class="ide-btn run" onclick="executeCompiler()">
-                    <i data-lucide="play" size="14"></i> Exécuter
-                </button>
+                <button class="ide-btn" onclick="executeCompiler()"><i data-lucide="play"></i> Exécuter</button>
             </div>
-            <div class="ide-console">
-                <div class="ide-console-header">
-                    <span id="consoleTitle">CONSOLE</span> 
-                    <span id="pyLoading" style="color:var(--accent); display:none;">⌛ Lancement Engine...</span>
-                </div>
-                <div class="ide-output-wrapper">
-                    <div class="ide-console-output" id="consoleOutput">> Prêt...</div>
-                    <iframe class="ide-html-preview" id="htmlPreview"></iframe>
-                </div>
-            </div>
-        </div>
-    </div>
+            <div class="ide-console" id="consoleOutput">> Prêt...</div>
+        </section>
+    </main>
 
     <script src="js/app.js"></script>
-    
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-        });
+        // Initialisation sécurisée des icônes
+        window.onload = () => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        };
     </script>
 </body>
 </html>
